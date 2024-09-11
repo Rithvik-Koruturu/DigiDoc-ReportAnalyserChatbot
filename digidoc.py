@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import os
 import streamlit as st
 import google.generativeai as genai
-from google.generativeai import types as generation_types  # Import the correct types
+from google.generativeai import types as generation_types
 from PIL import Image
 import pdfplumber
 
@@ -17,150 +17,108 @@ else:
     # Configure the generative AI model with the provided API key
     genai.configure(api_key=api_key)
 
-    # Function to analyze the report content using Gemini Pro
-    def analyze_report_content(report_text, gender):
-        analysis_prompt = f"""
-        You are an advanced AI medical assistant. Given the following report text, analyze each observation in the following format:
-        
-        Observation Name - Value with Units - Normal Ranges with Units - Status (normal/slightly over the border/slightly below the border/over the border/below the border).
 
-        Additionally, provide:
-        - Potential Risks associated with the report findings.
-        - Remedies to avoid these potential risks.
-        - Suggest which specialist doctor to consult if needed.
+def analyze_report_content(report_text, gender):
+    """
+    Analyzes report content using Gemini Pro and provides details like observations, status, risks, remedies, and specialist suggestions.
 
-        Patient Gender: {gender}
+    Args:
+        report_text (str): Text extracted from the uploaded report.
+        gender (str): Patient's gender.
 
-        Report Text:
-        {report_text}
-        """
+    Returns:
+        str: Analyzed report with details for each observation.
+    """
+
+    analysis_prompt = f"""
+    You are an advanced AI medical assistant. Given the following report text, analyze each observation in the following format:
+
+    Observation Name - Value with Units - Normal Ranges with Units - Status (normal/slightly over the border/slightly below the border/over the border/below the border).
+
+    Additionally, provide:
+      - Potential Risks associated with the report findings.
+      - Remedies to avoid these potential risks.
+      - Suggest which specialist doctor to consult if needed.
+
+    Patient Gender: {gender}
+
+    Report Text:
+    {report_text}
+    """
+
+    try:
         model = genai.GenerativeModel("gemini-pro")
         chat = model.start_chat(history=[])
 
-        # Split the input text into chunks of manageable size
+        # Summarize long reports (optional)
+        if len(report_text) > 1000:
+            report_text = summarize_report(report_text)  # Implement a summarizing function
+
+        # Split report into smaller chunks for processing
         chunks = [report_text[i:i + 1000] for i in range(0, len(report_text), 1000)]
         responses = []
 
         for chunk in chunks:
-            try:
-                # Send each chunk separately
-                response = chat.send_message(analysis_prompt.replace("{report_text}", chunk))
-                responses.append(response.text)
-            except generation_types.StopCandidateException:
-                st.error("The model could not generate a response for this chunk.")
-                continue
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
-                continue
-        
-        # Join all responses together
+            response = chat.send_message(analysis_prompt.replace("{report_text}", chunk))
+            responses.append(response.text)
+
         return "\n".join(responses)
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
+        return ""  # Return an empty string on error
 
-    # Function to extract text from all pages of a PDF file, including after blank pages
-    def extract_text_from_pdf(uploaded_file):
-        extracted_text = ""
-        with pdfplumber.open(uploaded_file) as pdf:
-            for page_number, page in enumerate(pdf.pages):
-                page_text = page.extract_text()
-                if page_text and page_text.strip():  # Check for non-blank content
-                    extracted_text += f"\n\nPage {page_number + 1}:\n{page_text}"
-        return extracted_text
 
-    # Function to handle image uploads and analyze them using Gemini Flash
-    def handle_image_uploads(uploaded_files):
-        image_context = ""
-        for uploaded_file in uploaded_files:
-            if uploaded_file is not None:
-                image = Image.open(uploaded_file)
-                st.image(image, caption="Uploaded Image", use_column_width=True)
+def extract_text_from_pdf(uploaded_file):
+    """
+    Extracts text from all pages of a PDF file, including after blank pages.
 
-                image_data = input_image_setup(uploaded_file)
-                image_context += get_gemini_image_response("Analyze the image content", image_data)
-        return image_context
+    Args:
+        uploaded_file (streamlit.UploadedFile): Uploaded PDF file.
 
-    # Function to process the uploaded image
-    def input_image_setup(uploaded_file):
-        if uploaded_file is not None:
-            bytes_data = uploaded_file.getvalue()
-            mime_type = uploaded_file.type
-            image_parts = [{"mime_type": mime_type, "data": bytes_data}]
-            return image_parts
-        else:
-            raise FileNotFoundError("No file uploaded")
+    Returns:
+        str: Extracted text from the PDF file.
+    """
 
-    # Function to get response from the Gemini Flash model for images
-    def get_gemini_image_response(input_prompt, image_data=None):
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        if image_data:
-            response = model.generate_content([image_data[0], input_prompt])
-            return response.text
-        else:
-            return "No image data provided."
+    extracted_text = ""
+    with pdfplumber.open(uploaded_file) as pdf:
+        for page_number, page in enumerate(pdf.pages):
+            page_text = page.extract_text()
+            if page_text and page_text.strip():
+                extracted_text += f"\n\nPage {page_number + 1}:\n{page_text}"
+    return extracted_text
 
-    # Function to handle user queries with context from reports using Gemini Pro
-    def get_response_with_context(question, report_text=None, image_context=None):
-        model = genai.GenerativeModel("gemini-pro")
-        chat = model.start_chat(history=[])
-        
-        # Combine context from reports and images
-        combined_context = ""
-        if report_text:
-            combined_context += f"Report Data: {report_text}\n"
-        if image_context:
-            combined_context += f"Image Analysis: {image_context}\n"
-        
-        # Formulate the final prompt for the model
-        final_prompt = f"""
-        You are an advanced AI medical assistant. Use the following data extracted from the reports and images 
-        to answer the user's question comprehensively. Provide relevant information, possible diagnoses, 
-        and suggest specialist doctors if needed.
 
-        {combined_context}
+def handle_image_uploads(uploaded_files):
+    """
+    Processes uploaded images and analyzes them using Gemini Flash.
 
-        Question: {question}
-        """
-        response = chat.send_message(final_prompt)
-        return response.text
+    Args:
+        uploaded_files (list): List of uploaded images.
 
-    # Initialize Streamlit app
-    st.set_page_config(page_title="Report Analyzer Chatbot")
+    Returns:
+        str: Image analysis context from the Gemini Flash model.
+    """
 
-    st.header("Report Analyzer Chatbot")
-
-    # Add gender input field
-    gender = st.selectbox("Select the patient's gender:", ("Male", "Female", "Other"))
-
-    # Allow multiple images and PDF upload
-    uploaded_files = st.file_uploader("Upload images or a PDF report...", type=["jpg", "jpeg", "png", "pdf"], accept_multiple_files=True)
-
-    report_text = ""
     image_context = ""
-    if uploaded_files:
-        for uploaded_file in uploaded_files:
-            if uploaded_file.type == "application/pdf":
-                report_text += extract_text_from_pdf(uploaded_file)
-            else:
-                image_context += handle_image_uploads([uploaded_file])
+    for uploaded_file in uploaded_files:
+        if uploaded_file is not None:
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Process the report content if available
-    if report_text:
-        response = analyze_report_content(report_text, gender)
-        st.subheader("Report Analysis:")
-        for line in response.splitlines():
-            st.write(line)
+            image_data = input_image_setup(uploaded_file)
+            image_context += get_gemini_image_response("Analyze the image content", image_data)
+    return image_context
 
-    # Process image context if available
-    if image_context:
-        st.subheader("Image Analysis:")
-        for line in image_context.splitlines():
-            st.write(line)
 
-    # Unified input field for additional queries
-    user_input = st.text_input("Ask a question related to the report or health:")
+def input_image_setup(uploaded_file):
+    """
+    Processes the uploaded image for sending to the Gemini Flash model.
 
-    # Button to get a response
-    if st.button("Get Response"):
-        if user_input:
-            response = get_response_with_context(user_input, report_text, image_context)
-            for line in response.splitlines():
-                st.write(line)
+    Args:
+        uploaded_file (streamlit.UploadedFile): Uploaded image file.
+
+    Returns:
+        list: List containing image data in the required format.
+    """
+
+    if
