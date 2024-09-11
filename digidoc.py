@@ -35,8 +35,8 @@ else:
         """
         model = genai.GenerativeModel("gemini-pro")
         chat = model.start_chat(history=[])
-        response = chat.send_message(analysis_prompt)  # Removed 'stream=True' to avoid character limits
-        return response
+        response = chat.send_message(analysis_prompt)
+        return response.text  # Ensure that the response is a string
 
     # Function to extract text from all pages of a PDF file
     def extract_text_from_pdf(uploaded_file):
@@ -101,8 +101,8 @@ else:
 
         Question: {question}
         """
-        response = chat.send_message(final_prompt)  # Removed 'stream=True' to avoid character limits
-        return response
+        response = chat.send_message(final_prompt)
+        return response.text  # Ensure that the response is a string
 
     # Initialize Streamlit app
     st.set_page_config(page_title="Report Analyzer Chatbot")
