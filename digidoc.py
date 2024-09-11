@@ -38,13 +38,13 @@ else:
         response = chat.send_message(analysis_prompt)
         return response.text  # Ensure that the response is a string
 
-    # Function to extract text from all pages of a PDF file
+    # Function to extract text from all pages of a PDF file, including after blank pages
     def extract_text_from_pdf(uploaded_file):
         extracted_text = ""
         with pdfplumber.open(uploaded_file) as pdf:
             for page_number, page in enumerate(pdf.pages):
                 page_text = page.extract_text()
-                if page_text:
+                if page_text and page_text.strip():  # Check for non-blank content
                     extracted_text += f"\n\nPage {page_number + 1}:\n{page_text}"
         return extracted_text
 
