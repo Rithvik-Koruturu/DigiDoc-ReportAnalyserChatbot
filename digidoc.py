@@ -95,9 +95,9 @@ else:
         return response
 
     # Initialize Streamlit app
-    st.set_page_config(page_title="Digi_Doc")
+    st.set_page_config(page_title="Report Analyzer Chatbot")
 
-    st.header("Digi_Doc:Report Analyzer Chatbot")
+    st.header("Report Analyzer Chatbot")
 
     # Initialize session state for chat history if it doesn't exist
     if 'chat_history' not in st.session_state:
@@ -120,13 +120,15 @@ else:
         response = analyze_report_content(report_text)
         st.subheader("Report Analysis:")
         for chunk in response:
-            st.write(chunk.text)
-            st.session_state['chat_history'].append(("Report Analysis", chunk.text))
+            for line in chunk.text.splitlines():
+                st.write(line)
+                st.session_state['chat_history'].append(("Report Analysis", line))
 
     # Process image context if available
     if image_context:
         st.subheader("Image Analysis:")
-        st.write(image_context)
+        for line in image_context.splitlines():
+            st.write(line)
 
     # Unified input field for additional queries
     user_input = st.text_input("Ask a question related to the report or health:")
@@ -136,9 +138,10 @@ else:
         if user_input:
             response = get_response_with_context(user_input, report_text, image_context)
             for chunk in response:
-                st.write(chunk.text)
-                st.session_state['chat_history'].append(("You", user_input))
-                st.session_state['chat_history'].append(("Bot", chunk.text))
+                for line in chunk.text.splitlines():
+                    st.write(line)
+                    st.session_state['chat_history'].append(("You", user_input))
+                    st.session_state['chat_history'].append(("Bot", line))
 
     # Display chat history
     st.subheader("Chat History")
