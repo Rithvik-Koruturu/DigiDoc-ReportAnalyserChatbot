@@ -69,9 +69,9 @@ else:
         return get_gemini_response(prompt, text_data=text_data)
 
     # Initialize Streamlit app
-    st.set_page_config(page_title="AI Report Analyzer")
+    st.set_page_config(page_title="CliniCheck")
 
-    st.header("AI Report Analyzer")
+    st.header("CliniCheck-AI Report Analyzer")
 
     # Initialize session state for analysis results and gender if it doesn't exist
     if 'analysis_results' not in st.session_state:
