@@ -100,8 +100,6 @@ else:
 
     st.header("Report Analyzer Chatbot")
 
-  
-
     # Allow multiple images and PDF upload
     uploaded_files = st.file_uploader("Upload images or a PDF report...", type=["jpg", "jpeg", "png", "pdf"], accept_multiple_files=True)
 
@@ -118,10 +116,20 @@ else:
     if report_text:
         response = analyze_report_content(report_text)
         st.subheader("Report Analysis:")
+        report_lines = []
         for chunk in response:
             for line in chunk.text.splitlines():
                 st.write(line)
-                st.session_state['chat_history'].append(("Report Analysis", line))
+                report_lines.append(line)
+
+        # Display a button to print the report
+        if st.button("Print Report"):
+            print_script = f"""
+            <script>
+                window.print();
+            </script>
+            """
+            st.markdown(print_script, unsafe_allow_html=True)
 
     # Process image context if available
     if image_context:
@@ -139,7 +147,3 @@ else:
             for chunk in response:
                 for line in chunk.text.splitlines():
                     st.write(line)
-                    st.session_state['chat_history'].append(("You", user_input))
-                    st.session_state['chat_history'].append(("Bot", line))
-
- 
