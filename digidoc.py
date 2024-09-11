@@ -18,49 +18,37 @@ else:
     genai.configure(api_key=api_key)
 
 
-def analyze_report_content(report_text, gender):
+def analyze_content_with_flash(content, gender):
     """
-    Analyzes report content using Gemini Pro and provides details like observations, status, risks, remedies, and specialist suggestions.
+    Analyzes content using Gemini Flash and provides details like observations, status, risks, remedies, and specialist suggestions.
 
     Args:
-        report_text (str): Text extracted from the uploaded report.
+        content (str): Text or image content extracted from the uploaded files.
         gender (str): Patient's gender.
 
     Returns:
-        str: Analyzed report with details for each observation.
+        str: Analyzed content with details for each observation.
     """
     analysis_prompt = f"""
-    You are an advanced AI medical assistant. Given the following report text, analyze each observation in the following format:
+    You are an advanced AI medical assistant. Given the following content, analyze each observation in the following format:
 
     Observation Name - Value with Units - Normal Ranges with Units - Status (normal/slightly over the border/slightly below the border/over the border/below the border).
 
     Additionally, provide:
-      - Potential Risks associated with the report findings.
+      - Potential Risks associated with the content findings.
       - Remedies to avoid these potential risks.
       - Suggest which specialist doctor to consult if needed.
 
     Patient Gender: {gender}
 
-    Report Text:
-    {report_text}
+    Content:
+    {content}
     """
 
     try:
-        model = genai.GenerativeModel("gemini-pro")
-        chat = model.start_chat(history=[])
-
-        # Summarize long reports (optional)
-        summarized_report = summarize_report(report_text)
-
-        # Split report into smaller chunks for processing
-        chunks = [summarized_report[i:i + 1000] for i in range(0, len(summarized_report), 1000)]
-        responses = []
-
-        for chunk in chunks:
-            response = chat.send_message(analysis_prompt.replace("{report_text}", chunk))
-            responses.append(response.text)
-
-        return "\n".join(responses)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content([{"mime_type": "text/plain", "data": content}])
+        return response.text
     except generation_types.StopCandidateException:
         st.error("The model did not provide a valid response. Please try again.")
         return ""  # Return an empty string on error
@@ -105,7 +93,7 @@ def handle_image_uploads(uploaded_files):
             st.image(image, caption="Uploaded Image", use_column_width=True)
 
             image_data = input_image_setup(uploaded_file)
-            image_context += get_gemini_image_response("Analyze the image content", image_data)
+            image_context += get_flash_image_response("Analyze the image content", image_data)
     return image_context
 
 
@@ -128,7 +116,7 @@ def input_image_setup(uploaded_file):
         raise FileNotFoundError("No file uploaded")
 
 
-def get_gemini_image_response(input_prompt, image_data=None):
+def get_flash_image_response(input_prompt, image_data=None):
     """
     Gets response from the Gemini Flash model for images.
 
@@ -141,31 +129,15 @@ def get_gemini_image_response(input_prompt, image_data=None):
     """
     model = genai.GenerativeModel('gemini-1.5-flash')
     if image_data:
-        response = model.generate_content([image_data[0], input_prompt])
+        response = model.generate_content([{"mime_type": image_data[0]["mime_type"], "data": image_data[0]["data"]}, {"mime_type": "text/plain", "data": input_prompt}])
         return response.text
     else:
         return "No image data provided."
 
 
-def summarize_report(report_text, max_length=1000):
+def get_response_with_flash(question, report_text=None, image_context=None):
     """
-    Summarizes the report text to ensure it's within a manageable length for the AI model.
-    
-    Args:
-        report_text (str): The full report text.
-        max_length (int): Maximum length of the summarized text.
-        
-    Returns:
-        str: Summarized text.
-    """
-    if len(report_text) > max_length:
-        return report_text[:max_length] + "..."
-    return report_text
-
-
-def get_response_with_context(question, report_text=None, image_context=None):
-    """
-    Handles user queries with context from reports using Gemini Pro.
+    Handles user queries with context from reports and images using Gemini Flash.
 
     Args:
         question (str): User's query.
@@ -173,19 +145,14 @@ def get_response_with_context(question, report_text=None, image_context=None):
         image_context (str, optional): Image analysis context. Default is None.
 
     Returns:
-        str: Response from the Gemini Pro model.
+        str: Response from the Gemini Flash model.
     """
-    model = genai.GenerativeModel("gemini-pro")
-    chat = model.start_chat(history=[])
-
-    # Combine context from reports and images
     combined_context = ""
     if report_text:
         combined_context += f"Report Data: {report_text}\n"
     if image_context:
         combined_context += f"Image Analysis: {image_context}\n"
 
-    # Formulate the final prompt for the model
     final_prompt = f"""
     You are an advanced AI medical assistant. Use the following data extracted from the reports and images
     to answer the user's question comprehensively. Provide relevant information, possible diagnoses,
@@ -195,8 +162,8 @@ def get_response_with_context(question, report_text=None, image_context=None):
 
     Question: {question}
     """
-    response = chat.send_message(final_prompt)
-    return response.text
+    response = get_flash_image_response(final_prompt)
+    return response
 
 
 # Initialize Streamlit app
@@ -221,15 +188,13 @@ if uploaded_files:
 
 # Process the report content if available
 if report_text:
-    response = analyze_report_content(report_text, gender)
+    response = analyze_content_with_flash(report_text, gender)
     st.subheader("Report Analysis:")
-    # Ensure unique output formatting
     st.write(response)
 
 # Process image context if available
 if image_context:
     st.subheader("Image Analysis:")
-    # Ensure unique output formatting
     st.write(image_context)
 
 # Unified input field for additional queries
@@ -238,6 +203,5 @@ user_input = st.text_input("Ask a question related to the report or health:")
 # Button to get a response
 if st.button("Get Response"):
     if user_input:
-        response = get_response_with_context(user_input, report_text, image_context)
-        # Ensure unique output formatting
+        response = get_response_with_flash(user_input, report_text, image_context)
         st.write(response)
