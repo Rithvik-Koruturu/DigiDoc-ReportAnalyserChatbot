@@ -1,81 +1,3 @@
-from dotenv import load_dotenv
-import os
-import streamlit as st
-import google.generativeai as genai
-from google.generativeai import types as generation_types
-from PIL import Image
-import pdfplumber
-
-# Load environment variables (like your Google API key)
-load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY")
-
-# Check if the API key is set; if not, display an error message
-if not api_key:
-    st.error("API key is not set. Please check your .env file.")
-else:
-    # Configure the generative AI model with the provided API key
-    genai.configure(api_key=api_key)
-
-
-def analyze_content_with_flash(content, gender):
-    """
-    Analyzes content using Gemini Flash and provides details like observations, status, risks, remedies, and specialist suggestions.
-
-    Args:
-        content (str): Text or image content extracted from the uploaded files.
-        gender (str): Patient's gender.
-
-    Returns:
-        str: Analyzed content with details for each observation.
-    """
-    analysis_prompt = f"""
-    You are an advanced AI medical assistant. Given the following content, analyze each observation in the following format:
-
-    Observation Name - Value with Units - Normal Ranges with Units - Status (normal/slightly over the border/slightly below the border/over the border/below the border).
-
-    Additionally, provide:
-      - Potential Risks associated with the content findings.
-      - Remedies to avoid these potential risks.
-      - Suggest which specialist doctor to consult if needed.
-
-    Patient Gender: {gender}
-
-    Content:
-    {content}
-    """
-
-    try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content([{"mime_type": "text/plain", "data": content}])
-        return response.text
-    except generation_types.StopCandidateException:
-        st.error("The model did not provide a valid response. Please try again.")
-        return ""  # Return an empty string on error
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
-        return ""  # Return an empty string on error
-
-
-def extract_text_from_pdf(uploaded_file):
-    """
-    Extracts text from all pages of a PDF file, including after blank pages.
-
-    Args:
-        uploaded_file (streamlit.UploadedFile): Uploaded PDF file.
-
-    Returns:
-        str: Extracted text from the PDF file.
-    """
-    extracted_text = ""
-    with pdfplumber.open(uploaded_file) as pdf:
-        for page_number, page in enumerate(pdf.pages):
-            page_text = page.extract_text()
-            if page_text and page_text.strip():
-                extracted_text += f"\n\nPage {page_number + 1}:\n{page_text}"
-    return extracted_text
-
-
 def handle_image_uploads(uploaded_files):
     """
     Processes uploaded images and analyzes them using Gemini Flash.
@@ -129,8 +51,15 @@ def get_flash_image_response(input_prompt, image_data=None):
     """
     model = genai.GenerativeModel('gemini-1.5-flash')
     if image_data:
-        response = model.generate_content([{"mime_type": image_data[0]["mime_type"], "data": image_data[0]["data"]}, {"mime_type": "text/plain", "data": input_prompt}])
-        return response.text
+        try:
+            response = model.generate_content([{"mime_type": image_data[0]["mime_type"], "data": image_data[0]["data"]}, {"mime_type": "text/plain", "data": input_prompt}])
+            return response.text
+        except generation_types.StopCandidateException:
+            st.error("The model did not provide a valid response for the image analysis.")
+            return ""
+        except Exception as e:
+            st.error(f"An error occurred during image analysis: {str(e)}")
+            return ""
     else:
         return "No image data provided."
 
@@ -162,8 +91,7 @@ def get_response_with_flash(question, report_text=None, image_context=None):
 
     Question: {question}
     """
-    response = get_flash_image_response(final_prompt)
-    return response
+    return get_flash_image_response(final_prompt)
 
 
 # Initialize Streamlit app
