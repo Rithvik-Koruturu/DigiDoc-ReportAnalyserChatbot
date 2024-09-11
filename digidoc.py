@@ -18,6 +18,22 @@ else:
     genai.configure(api_key=api_key)
 
 
+def summarize_report(report_text, max_length=1000):
+    """
+    Summarizes the report text to ensure it's within a manageable length for the AI model.
+    
+    Args:
+        report_text (str): The full report text.
+        max_length (int): Maximum length of the summarized text.
+        
+    Returns:
+        str: Summarized text.
+    """
+    if len(report_text) > max_length:
+        return report_text[:max_length] + "..."
+    return report_text
+
+
 def analyze_report_content(report_text, gender):
     """
     Analyzes report content using Gemini Pro and provides details like observations, status, risks, remedies, and specialist suggestions.
@@ -29,7 +45,6 @@ def analyze_report_content(report_text, gender):
     Returns:
         str: Analyzed report with details for each observation.
     """
-
     analysis_prompt = f"""
     You are an advanced AI medical assistant. Given the following report text, analyze each observation in the following format:
 
@@ -63,6 +78,9 @@ def analyze_report_content(report_text, gender):
             responses.append(response.text)
 
         return "\n".join(responses)
+    except generation_types.StopCandidateException:
+        st.error("The model did not provide a valid response. Please try again.")
+        return ""  # Return an empty string on error
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
         return ""  # Return an empty string on error
@@ -78,7 +96,6 @@ def extract_text_from_pdf(uploaded_file):
     Returns:
         str: Extracted text from the PDF file.
     """
-
     extracted_text = ""
     with pdfplumber.open(uploaded_file) as pdf:
         for page_number, page in enumerate(pdf.pages):
@@ -98,7 +115,6 @@ def handle_image_uploads(uploaded_files):
     Returns:
         str: Image analysis context from the Gemini Flash model.
     """
-
     image_context = ""
     for uploaded_file in uploaded_files:
         if uploaded_file is not None:
@@ -120,7 +136,6 @@ def input_image_setup(uploaded_file):
     Returns:
         list: List containing image data in the required format.
     """
-
     if uploaded_file is not None:
         bytes_data = uploaded_file.getvalue()
         mime_type = uploaded_file.type
@@ -141,7 +156,6 @@ def get_gemini_image_response(input_prompt, image_data=None):
     Returns:
         str: Response from the Gemini Flash model.
     """
-
     model = genai.GenerativeModel('gemini-1.5-flash')
     if image_data:
         response = model.generate_content([image_data[0], input_prompt])
@@ -162,7 +176,6 @@ def get_response_with_context(question, report_text=None, image_context=None):
     Returns:
         str: Response from the Gemini Pro model.
     """
-
     model = genai.GenerativeModel("gemini-pro")
     chat = model.start_chat(history=[])
 
