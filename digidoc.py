@@ -45,7 +45,7 @@ def analyze_content_with_flash(content, gender, retries=3):
     {content}
     """
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-1.5-pro")
     for attempt in range(retries):
         try:
             response = model.generate_content([{"mime_type": "text/plain", "data": content}])
