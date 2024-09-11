@@ -2,6 +2,7 @@ from dotenv import load_dotenv
 import os
 import streamlit as st
 import google.generativeai as genai
+from google.generativeai import types as generation_types  # Import the correct types
 from PIL import Image
 import pdfplumber
 
