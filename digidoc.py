@@ -100,9 +100,7 @@ else:
 
     st.header("Report Analyzer Chatbot")
 
-    # Initialize session state for chat history if it doesn't exist
-    if 'chat_history' not in st.session_state:
-        st.session_state['chat_history'] = []
+  
 
     # Allow multiple images and PDF upload
     uploaded_files = st.file_uploader("Upload images or a PDF report...", type=["jpg", "jpeg", "png", "pdf"], accept_multiple_files=True)
@@ -144,7 +142,4 @@ else:
                     st.session_state['chat_history'].append(("You", user_input))
                     st.session_state['chat_history'].append(("Bot", line))
 
-    # Display chat history
-    st.subheader("Chat History")
-    for role, text in st.session_state['chat_history']:
-        st.write(f"{role}: {text}")
+ 
