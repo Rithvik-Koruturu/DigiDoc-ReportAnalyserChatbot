@@ -16,16 +16,12 @@ else:
     # Configure the generative AI model with the provided API key
     genai.configure(api_key=api_key)
 
-    # Function to analyze the report content based on gender
-    def analyze_report_content(report_text, gender):
+    # Function to analyze the report content
+    def analyze_report_content(report_text):
         analysis_prompt = f"""
-        You are an advanced AI medical assistant. Given the following report text, analyze the values, identify normal ranges,identify whether the values in the report lie withon normal ranges ,identify  
-        potential risks, and suggest remedies to avoid risks. Also, suggest which specialist doctor to consult if needed.
+        You are an advanced AI medical assistant. Given the following report text, analyze each observation in the following format:
+        Observation Name - Value with Units - Normal Ranges with Units - Status (normal/slightly over the border/slightly below the border/over the border/below the border).
         
-        Report Text:
-        {report_text}
-    
-        Patient Gender: {gender}
         Report Text:
         {report_text}
         """
@@ -74,12 +70,12 @@ else:
             return "No image data provided."
 
     # Function to handle user queries with context from reports
-    def get_response_with_context(question, report_text=None, image_context=None, gender=None):
+    def get_response_with_context(question, report_text=None, image_context=None):
         model = genai.GenerativeModel("gemini-pro")
         chat = model.start_chat(history=[])
         
-        # Combine context from reports, images, and gender
-        combined_context = f"Patient Gender: {gender}\n"
+        # Combine context from reports and images
+        combined_context = ""
         if report_text:
             combined_context += f"Report Data: {report_text}\n"
         if image_context:
@@ -87,9 +83,9 @@ else:
         
         # Formulate the final prompt for the model
         final_prompt = f"""
-        You are an advanced AI medical assistant. Use the following data extracted from the reports, images, 
-        and gender information to answer the user's question comprehensively. Provide relevant information, 
-        possible diagnoses, and suggest specialist doctors if needed.
+        You are an advanced AI medical assistant. Use the following data extracted from the reports and images 
+        to answer the user's question comprehensively. Provide relevant information, possible diagnoses, 
+        and suggest specialist doctors if needed.
 
         {combined_context}
 
@@ -100,10 +96,12 @@ else:
 
     # Initialize Streamlit app
     st.set_page_config(page_title="Report Analyzer Chatbot")
+
     st.header("Report Analyzer Chatbot")
 
-    # Patient gender selection
-    gender = st.selectbox("Select the patient's gender:", ["Male", "Female", "Other"])
+    # Initialize session state for chat history if it doesn't exist
+    if 'chat_history' not in st.session_state:
+        st.session_state['chat_history'] = []
 
     # Allow multiple images and PDF upload
     uploaded_files = st.file_uploader("Upload images or a PDF report...", type=["jpg", "jpeg", "png", "pdf"], accept_multiple_files=True)
@@ -119,22 +117,12 @@ else:
 
     # Process the report content if available
     if report_text:
-        response = analyze_report_content(report_text, gender)
+        response = analyze_report_content(report_text)
         st.subheader("Report Analysis:")
-        report_lines = []
         for chunk in response:
             for line in chunk.text.splitlines():
                 st.write(line)
-                report_lines.append(line)
-
-        # Display a button to print the report
-        if st.button("Print Report"):
-            print_script = f"""
-            <script>
-                window.print();
-            </script>
-            """
-            st.markdown(print_script, unsafe_allow_html=True)
+                st.session_state['chat_history'].append(("Report Analysis", line))
 
     # Process image context if available
     if image_context:
@@ -148,7 +136,14 @@ else:
     # Button to get a response
     if st.button("Get Response"):
         if user_input:
-            response = get_response_with_context(user_input, report_text, image_context, gender)
+            response = get_response_with_context(user_input, report_text, image_context)
             for chunk in response:
                 for line in chunk.text.splitlines():
                     st.write(line)
+                    st.session_state['chat_history'].append(("You", user_input))
+                    st.session_state['chat_history'].append(("Bot", line))
+
+    # Display chat history
+    st.subheader("Chat History")
+    for role, text in st.session_state['chat_history']:
+        st.write(f"{role}: {text}")
