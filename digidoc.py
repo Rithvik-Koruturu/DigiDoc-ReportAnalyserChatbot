@@ -121,4 +121,111 @@ def input_image_setup(uploaded_file):
         list: List containing image data in the required format.
     """
 
-    if
+    if uploaded_file is not None:
+        bytes_data = uploaded_file.getvalue()
+        mime_type = uploaded_file.type
+        image_parts = [{"mime_type": mime_type, "data": bytes_data}]
+        return image_parts
+    else:
+        raise FileNotFoundError("No file uploaded")
+
+
+def get_gemini_image_response(input_prompt, image_data=None):
+    """
+    Gets response from the Gemini Flash model for images.
+
+    Args:
+        input_prompt (str): Prompt for the Gemini Flash model.
+        image_data (list, optional): Image data to be analyzed. Default is None.
+
+    Returns:
+        str: Response from the Gemini Flash model.
+    """
+
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    if image_data:
+        response = model.generate_content([image_data[0], input_prompt])
+        return response.text
+    else:
+        return "No image data provided."
+
+
+def get_response_with_context(question, report_text=None, image_context=None):
+    """
+    Handles user queries with context from reports using Gemini Pro.
+
+    Args:
+        question (str): User's query.
+        report_text (str, optional): Text extracted from the report. Default is None.
+        image_context (str, optional): Image analysis context. Default is None.
+
+    Returns:
+        str: Response from the Gemini Pro model.
+    """
+
+    model = genai.GenerativeModel("gemini-pro")
+    chat = model.start_chat(history=[])
+
+    # Combine context from reports and images
+    combined_context = ""
+    if report_text:
+        combined_context += f"Report Data: {report_text}\n"
+    if image_context:
+        combined_context += f"Image Analysis: {image_context}\n"
+
+    # Formulate the final prompt for the model
+    final_prompt = f"""
+    You are an advanced AI medical assistant. Use the following data extracted from the reports and images 
+    to answer the user's question comprehensively. Provide relevant information, possible diagnoses, 
+    and suggest specialist doctors if needed.
+
+    {combined_context}
+
+    Question: {question}
+    """
+    response = chat.send_message(final_prompt)
+    return response.text
+
+
+# Initialize Streamlit app
+st.set_page_config(page_title="Report Analyzer Chatbot")
+
+st.header("Report Analyzer Chatbot")
+
+# Add gender input field
+gender = st.selectbox("Select the patient's gender:", ("Male", "Female", "Other"))
+
+# Allow multiple images and PDF upload
+uploaded_files = st.file_uploader("Upload images or a PDF report...", type=["jpg", "jpeg", "png", "pdf"], accept_multiple_files=True)
+
+report_text = ""
+image_context = ""
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        if uploaded_file.type == "application/pdf":
+            report_text += extract_text_from_pdf(uploaded_file)
+        else:
+            image_context += handle_image_uploads([uploaded_file])
+
+# Process the report content if available
+if report_text:
+    response = analyze_report_content(report_text, gender)
+    st.subheader("Report Analysis:")
+    for line in response.splitlines():
+        st.write(line)
+
+# Process image context if available
+if image_context:
+    st.subheader("Image Analysis:")
+    for line in image_context.splitlines():
+        st.write(line)
+
+# Unified input field for additional queries
+user_input = st.text_input("Ask a question related to the report or health:")
+
+# Button to get a response
+if st.button("Get Response"):
+    if user_input:
+        response = get_response_with_context(user_input, report_text, image_context)
+        for line in response.splitlines():
+            st.write(line)
