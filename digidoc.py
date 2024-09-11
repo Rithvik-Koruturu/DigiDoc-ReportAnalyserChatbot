@@ -18,22 +18,6 @@ else:
     genai.configure(api_key=api_key)
 
 
-def summarize_report(report_text, max_length=1000):
-    """
-    Summarizes the report text to ensure it's within a manageable length for the AI model.
-    
-    Args:
-        report_text (str): The full report text.
-        max_length (int): Maximum length of the summarized text.
-        
-    Returns:
-        str: Summarized text.
-    """
-    if len(report_text) > max_length:
-        return report_text[:max_length] + "..."
-    return report_text
-
-
 def analyze_report_content(report_text, gender):
     """
     Analyzes report content using Gemini Pro and provides details like observations, status, risks, remedies, and specialist suggestions.
@@ -163,6 +147,22 @@ def get_gemini_image_response(input_prompt, image_data=None):
         return "No image data provided."
 
 
+def summarize_report(report_text, max_length=1000):
+    """
+    Summarizes the report text to ensure it's within a manageable length for the AI model.
+    
+    Args:
+        report_text (str): The full report text.
+        max_length (int): Maximum length of the summarized text.
+        
+    Returns:
+        str: Summarized text.
+    """
+    if len(report_text) > max_length:
+        return report_text[:max_length] + "..."
+    return report_text
+
+
 def get_response_with_context(question, report_text=None, image_context=None):
     """
     Handles user queries with context from reports using Gemini Pro.
@@ -223,12 +223,14 @@ if uploaded_files:
 if report_text:
     response = analyze_report_content(report_text, gender)
     st.subheader("Report Analysis:")
-    st.text(response)  # Use st.text to avoid duplication
+    # Ensure unique output formatting
+    st.write(response)
 
 # Process image context if available
 if image_context:
     st.subheader("Image Analysis:")
-    st.text(image_context)  # Use st.text to avoid duplication
+    # Ensure unique output formatting
+    st.write(image_context)
 
 # Unified input field for additional queries
 user_input = st.text_input("Ask a question related to the report or health:")
@@ -237,4 +239,5 @@ user_input = st.text_input("Ask a question related to the report or health:")
 if st.button("Get Response"):
     if user_input:
         response = get_response_with_context(user_input, report_text, image_context)
-        st.text(response)  # Use st.text to avoid duplication
+        # Ensure unique output formatting
+        st.write(response)
