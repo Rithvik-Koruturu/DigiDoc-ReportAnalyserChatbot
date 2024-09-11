@@ -35,8 +35,25 @@ else:
         """
         model = genai.GenerativeModel("gemini-pro")
         chat = model.start_chat(history=[])
-        response = chat.send_message(analysis_prompt)
-        return response.text  # Ensure that the response is a string
+
+        # Split the input text into chunks of manageable size
+        chunks = [report_text[i:i + 1000] for i in range(0, len(report_text), 1000)]
+        responses = []
+
+        for chunk in chunks:
+            try:
+                # Send each chunk separately
+                response = chat.send_message(analysis_prompt.replace("{report_text}", chunk))
+                responses.append(response.text)
+            except generation_types.StopCandidateException:
+                st.error("The model could not generate a response for this chunk.")
+                continue
+            except Exception as e:
+                st.error(f"An error occurred: {str(e)}")
+                continue
+        
+        # Join all responses together
+        return "\n".join(responses)
 
     # Function to extract text from all pages of a PDF file, including after blank pages
     def extract_text_from_pdf(uploaded_file):
@@ -102,7 +119,7 @@ else:
         Question: {question}
         """
         response = chat.send_message(final_prompt)
-        return response.text  # Ensure that the response is a string
+        return response.text
 
     # Initialize Streamlit app
     st.set_page_config(page_title="Report Analyzer Chatbot")
@@ -128,7 +145,7 @@ else:
     if report_text:
         response = analyze_report_content(report_text, gender)
         st.subheader("Report Analysis:")
-        for line in response.splitlines():  # Split response into lines
+        for line in response.splitlines():
             st.write(line)
 
     # Process image context if available
@@ -144,5 +161,5 @@ else:
     if st.button("Get Response"):
         if user_input:
             response = get_response_with_context(user_input, report_text, image_context)
-            for line in response.splitlines():  # Split response into lines
+            for line in response.splitlines():
                 st.write(line)
