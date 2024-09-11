@@ -19,7 +19,7 @@ else:
     # Function to analyze the report content based on gender
     def analyze_report_content(report_text, gender):
         analysis_prompt = f"""
-        You are an advanced AI medical assistant. Given the following report text, analyze the values, identify normal ranges, 
+        You are an advanced AI medical assistant. Given the following report text, analyze the values, identify normal ranges,identify whether the values in the report lie withon normal ranges ,identify  
         potential risks, and suggest remedies to avoid risks. Also, suggest which specialist doctor to consult if needed.
         
         Report Text:
