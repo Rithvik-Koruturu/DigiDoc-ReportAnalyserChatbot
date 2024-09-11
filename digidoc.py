@@ -94,20 +94,7 @@ else:
         response = chat.send_message(final_prompt, stream=True)
         return response
 
-    def create_pdf(report_lines):
-        pdf = FPDF()
-        pdf.add_page()
-        pdf.set_font("Arial", size=12)
-        
-        for line in report_lines:
-            pdf.multi_cell(0, 10, line)
-        
-        # Save the PDF to a BytesIO object
-        pdf_output = io.BytesIO()
-        pdf.output(pdf_output)
-        pdf_output.seek(0)  # Reset file pointer to the start
-        return pdf_output
-        
+   
     # Initialize Streamlit app
     st.set_page_config(page_title="Report Analyzer Chatbot")
 
