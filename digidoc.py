@@ -66,11 +66,10 @@ def analyze_report_content(report_text, gender):
         chat = model.start_chat(history=[])
 
         # Summarize long reports (optional)
-        if len(report_text) > 1000:
-            report_text = summarize_report(report_text)  # Implement a summarizing function
+        summarized_report = summarize_report(report_text)
 
         # Split report into smaller chunks for processing
-        chunks = [report_text[i:i + 1000] for i in range(0, len(report_text), 1000)]
+        chunks = [summarized_report[i:i + 1000] for i in range(0, len(summarized_report), 1000)]
         responses = []
 
         for chunk in chunks:
@@ -188,8 +187,8 @@ def get_response_with_context(question, report_text=None, image_context=None):
 
     # Formulate the final prompt for the model
     final_prompt = f"""
-    You are an advanced AI medical assistant. Use the following data extracted from the reports and images 
-    to answer the user's question comprehensively. Provide relevant information, possible diagnoses, 
+    You are an advanced AI medical assistant. Use the following data extracted from the reports and images
+    to answer the user's question comprehensively. Provide relevant information, possible diagnoses,
     and suggest specialist doctors if needed.
 
     {combined_context}
@@ -216,7 +215,7 @@ image_context = ""
 if uploaded_files:
     for uploaded_file in uploaded_files:
         if uploaded_file.type == "application/pdf":
-            report_text += extract_text_from_pdf(uploaded_file)
+            report_text = extract_text_from_pdf(uploaded_file)  # Overwrite if multiple PDFs
         else:
             image_context += handle_image_uploads([uploaded_file])
 
@@ -224,14 +223,12 @@ if uploaded_files:
 if report_text:
     response = analyze_report_content(report_text, gender)
     st.subheader("Report Analysis:")
-    for line in response.splitlines():
-        st.write(line)
+    st.text(response)  # Use st.text to avoid duplication
 
 # Process image context if available
 if image_context:
     st.subheader("Image Analysis:")
-    for line in image_context.splitlines():
-        st.write(line)
+    st.text(image_context)  # Use st.text to avoid duplication
 
 # Unified input field for additional queries
 user_input = st.text_input("Ask a question related to the report or health:")
@@ -240,5 +237,4 @@ user_input = st.text_input("Ask a question related to the report or health:")
 if st.button("Get Response"):
     if user_input:
         response = get_response_with_context(user_input, report_text, image_context)
-        for line in response.splitlines():
-            st.write(line)
+        st.text(response)  # Use st.text to avoid duplication
