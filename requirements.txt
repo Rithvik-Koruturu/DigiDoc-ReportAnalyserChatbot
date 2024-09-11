@@ -3,3 +3,5 @@ google-generativeai
 python-dotenv
 Pillow
 pdfplumber
+pypdf2
+io
