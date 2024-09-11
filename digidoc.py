@@ -123,7 +123,7 @@ def get_flash_image_response(input_prompt, image_data=None):
     Returns:
         str: Response from the Gemini Flash model.
     """
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-1.5-pro')
     if image_data:
         try:
             response = model.generate_content([{"mime_type": image_data[0]["mime_type"], "data": image_data[0]["data"]}, {"mime_type": "text/plain", "data": input_prompt}])
