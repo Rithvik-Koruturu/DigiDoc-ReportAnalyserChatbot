@@ -16,7 +16,7 @@ else:
     # Configure the generative AI model with the provided API key
     genai.configure(api_key=api_key)
 
-    # Function to analyze the report content
+    # Function to analyze the report content using Gemini Pro
     def analyze_report_content(report_text, gender):
         analysis_prompt = f"""
         You are an advanced AI medical assistant. Given the following report text, analyze each observation in the following format:
@@ -35,7 +35,7 @@ else:
         """
         model = genai.GenerativeModel("gemini-pro")
         chat = model.start_chat(history=[])
-        response = chat.send_message(analysis_prompt, stream=True)
+        response = chat.send_message(analysis_prompt)  # Removed 'stream=True' to avoid character limits
         return response
 
     # Function to extract text from all pages of a PDF file
@@ -48,7 +48,7 @@ else:
                     extracted_text += f"\n\nPage {page_number + 1}:\n{page_text}"
         return extracted_text
 
-    # Function to handle image uploads
+    # Function to handle image uploads and analyze them using Gemini Flash
     def handle_image_uploads(uploaded_files):
         image_context = ""
         for uploaded_file in uploaded_files:
@@ -70,7 +70,7 @@ else:
         else:
             raise FileNotFoundError("No file uploaded")
 
-    # Function to get response from the generative AI model for images
+    # Function to get response from the Gemini Flash model for images
     def get_gemini_image_response(input_prompt, image_data=None):
         model = genai.GenerativeModel('gemini-1.5-flash')
         if image_data:
@@ -79,7 +79,7 @@ else:
         else:
             return "No image data provided."
 
-    # Function to handle user queries with context from reports
+    # Function to handle user queries with context from reports using Gemini Pro
     def get_response_with_context(question, report_text=None, image_context=None):
         model = genai.GenerativeModel("gemini-pro")
         chat = model.start_chat(history=[])
@@ -101,17 +101,13 @@ else:
 
         Question: {question}
         """
-        response = chat.send_message(final_prompt, stream=True)
+        response = chat.send_message(final_prompt)  # Removed 'stream=True' to avoid character limits
         return response
 
     # Initialize Streamlit app
     st.set_page_config(page_title="Report Analyzer Chatbot")
 
     st.header("Report Analyzer Chatbot")
-
-    # Initialize session state for chat history if it doesn't exist
-    if 'chat_history' not in st.session_state:
-        st.session_state['chat_history'] = []
 
     # Add gender input field
     gender = st.selectbox("Select the patient's gender:", ("Male", "Female", "Other"))
@@ -132,10 +128,8 @@ else:
     if report_text:
         response = analyze_report_content(report_text, gender)
         st.subheader("Report Analysis:")
-        for chunk in response:
-            for line in chunk.text.splitlines():
-                st.write(line)
-                st.session_state['chat_history'].append(("Report Analysis", line))
+        for line in response.splitlines():  # Split response into lines
+            st.write(line)
 
     # Process image context if available
     if image_context:
@@ -150,13 +144,5 @@ else:
     if st.button("Get Response"):
         if user_input:
             response = get_response_with_context(user_input, report_text, image_context)
-            for chunk in response:
-                for line in chunk.text.splitlines():
-                    st.write(line)
-                    st.session_state['chat_history'].append(("You", user_input))
-                    st.session_state['chat_history'].append(("Bot", line))
-
-    # Display chat history
-    st.subheader("Chat History")
-    for role, text in st.session_state['chat_history']:
-        st.write(f"{role}: {text}")
+            for line in response.splitlines():  # Split response into lines
+                st.write(line)
