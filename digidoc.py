@@ -17,11 +17,19 @@ else:
     genai.configure(api_key=api_key)
 
     # Function to analyze the report content
-    def analyze_report_content(report_text):
+    def analyze_report_content(report_text, gender):
         analysis_prompt = f"""
         You are an advanced AI medical assistant. Given the following report text, analyze each observation in the following format:
-        Observation Name - Value with Units - Normal Ranges with Units - Status (normal/slightly over the border/slightly below the border/over the border/below the border).
         
+        Observation Name - Value with Units - Normal Ranges with Units - Status (normal/slightly over the border/slightly below the border/over the border/below the border).
+
+        Additionally, provide:
+        - Potential Risks associated with the report findings.
+        - Remedies to avoid these potential risks.
+        - Suggest which specialist doctor to consult if needed.
+
+        Patient Gender: {gender}
+
         Report Text:
         {report_text}
         """
@@ -103,6 +111,9 @@ else:
     if 'chat_history' not in st.session_state:
         st.session_state['chat_history'] = []
 
+    # Add gender input field
+    gender = st.selectbox("Select the patient's gender:", ("Male", "Female", "Other"))
+
     # Allow multiple images and PDF upload
     uploaded_files = st.file_uploader("Upload images or a PDF report...", type=["jpg", "jpeg", "png", "pdf"], accept_multiple_files=True)
 
@@ -117,7 +128,7 @@ else:
 
     # Process the report content if available
     if report_text:
-        response = analyze_report_content(report_text)
+        response = analyze_report_content(report_text, gender)
         st.subheader("Report Analysis:")
         for chunk in response:
             for line in chunk.text.splitlines():
