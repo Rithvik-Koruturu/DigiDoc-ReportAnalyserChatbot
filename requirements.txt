@@ -1,7 +1,5 @@
 streamlit
 google-generativeai
-python-dotenv
 Pillow
-pdfplumber
-pypdf2
-io
+PyPDF2
+python-dotenv
