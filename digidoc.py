@@ -7,9 +7,6 @@ from PIL import Image
 import pdfplumber
 import time
 
-# Initialize Streamlit app
-st.set_page_config(page_title="Report Analyzer Chatbot")
-
 # Load environment variables (like your Google API key)
 load_dotenv()
 api_key = os.getenv("GOOGLE_API_KEY")
@@ -18,38 +15,21 @@ api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
     st.error("API key is not set. Please check your .env file.")
 else:
-    # Configure the generative AI model with the provided API key
+    # Configure the generative AI models with the provided API key
     genai.configure(api_key=api_key)
 
 
-def analyze_content_with_flash(content, gender, retries=3):
+def analyze_content_with_flash(content, retries=3):
     """
     Analyzes content using Gemini Flash and provides details.
 
     Args:
         content (str): Text or image content extracted from uploaded files.
-        gender (str): Patient's gender.
         retries (int): Number of retries in case of failure.
 
     Returns:
         str: Analyzed content with details or error message.
     """
-    analysis_prompt = f"""
-    You are an advanced AI medical assistant. Given the following content, analyze each observation in the following format:
-
-    Observation Name - Value with Units - Normal Ranges with Units - Status (normal/slightly over the border/slightly below the border/over the border/below the border).
-
-    Additionally, provide:
-      - Potential Risks associated with the content findings.
-      - Remedies to avoid these potential risks.
-      - Suggest which specialist doctor to consult if needed.
-
-    Patient Gender: {gender}
-
-    Content:
-    {content}
-    """
-
     model = genai.GenerativeModel("gemini-1.5-flash")
     for attempt in range(retries):
         try:
@@ -59,7 +39,6 @@ def analyze_content_with_flash(content, gender, retries=3):
             st.error("The model did not provide a valid response. Please try again.")
             return ""
         except Exception as e:
-            # Log the error for debugging (optional)
             st.error(f"An error occurred: {str(e)}")
             if attempt < retries - 1:
                 time.sleep(2 ** attempt)  # Exponential backoff
@@ -103,7 +82,7 @@ def handle_image_uploads(uploaded_files):
             st.image(image, caption="Uploaded Image", use_column_width=True)
 
             image_data = input_image_setup(uploaded_file)
-            image_context += get_gemini_image_response("Analyze the image content", image_data)
+            image_context += get_gemini_flash_response("Analyze the image content", image_data)
     return image_context
 
 
@@ -126,7 +105,7 @@ def input_image_setup(uploaded_file):
         raise FileNotFoundError("No file uploaded")
 
 
-def get_gemini_image_response(input_prompt, image_data=None):
+def get_gemini_flash_response(input_prompt, image_data=None):
     """
     Gets response from the Gemini Flash model for images.
 
@@ -147,7 +126,7 @@ def get_gemini_image_response(input_prompt, image_data=None):
 
 def get_response_with_context(question, report_text=None, image_context=None):
     """
-    Handles user queries with context from reports using Gemini Flash.
+    Handles user queries with context from reports using Gemini Pro.
 
     Args:
         question (str): User's query.
@@ -155,7 +134,7 @@ def get_response_with_context(question, report_text=None, image_context=None):
         image_context (str, optional): Image analysis context. Default is None.
 
     Returns:
-        str: Response from the Gemini Flash model.
+        str: Response from the Gemini Pro model.
     """
     combined_context = ""
     if report_text:
@@ -172,8 +151,10 @@ def get_response_with_context(question, report_text=None, image_context=None):
 
     Question: {question}
     """
-    response = analyze_content_with_flash(final_prompt, "")
-    return response
+    model = genai.GenerativeModel("gemini-pro")
+    chat = model.start_chat(history=[])
+    response = chat.send_message(final_prompt)
+    return response.text
 
 
 # Streamlit UI
@@ -196,9 +177,9 @@ if uploaded_files:
 
 # Process the report content if available
 if report_text:
-    response = analyze_content_with_flash(report_text, gender)
+    analysis_response = analyze_content_with_flash(report_text)
     st.subheader("Report Analysis:")
-    st.write(response)
+    st.write(analysis_response)
 
 # Process image context if available
 if image_context:
