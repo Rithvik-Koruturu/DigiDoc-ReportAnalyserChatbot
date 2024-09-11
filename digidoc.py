@@ -38,12 +38,14 @@ else:
         response = chat.send_message(analysis_prompt, stream=True)
         return response
 
-    # Function to extract text from a PDF file
+    # Function to extract text from all pages of a PDF file
     def extract_text_from_pdf(uploaded_file):
         extracted_text = ""
         with pdfplumber.open(uploaded_file) as pdf:
-            for page in pdf.pages:
-                extracted_text += page.extract_text() + "\n"
+            for page_number, page in enumerate(pdf.pages):
+                page_text = page.extract_text()
+                if page_text:
+                    extracted_text += f"\n\nPage {page_number + 1}:\n{page_text}"
         return extracted_text
 
     # Function to handle image uploads
