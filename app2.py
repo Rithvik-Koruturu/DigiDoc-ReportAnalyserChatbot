@@ -37,7 +37,7 @@ else:
     # Function to extract and analyze insights from the PDF based on the paper structure
     def analyze_paper(text_data):
         prompt = """
-        Analyze the following research paper and extract the following information under the specified headings:
+       you are expert aai reseach assistant  Analyze the following research paper and extract the following information under the specified headings:
 
         - Problem Statement: Summarize the core problem the paper is addressing.
         - Literature Survey: Summarize the key papers referenced in the literature survey. Present them in a table with columns: Paper Title, Methodology Used, Datasets, Performance Metrics, and Limitations.
